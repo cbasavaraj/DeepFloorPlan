@@ -163,7 +163,7 @@ def run_on_one(config: argparse.Namespace, model, img, shp) -> np.ndarray:
     r = convert_one_hot_to_image(logits_r)[0].numpy()
     cw = convert_one_hot_to_image(logits_cw)[0].numpy()
 
-    if config.post_process:
+    if config.postprocess:
         r, cw = post_process(r, cw, shp)
 
     if not config.colorize:
