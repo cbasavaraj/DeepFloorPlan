@@ -178,12 +178,11 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         default="log",
         choices=["log", "tflite", "pb", "none"],
     )  # log,tflite,pb
-    p.add_argument("--save", type=str)
+    p.add_argument("--savedir", type=str, default="out")
     return p.parse_args(args)
 
 
 def deploy_plot_res(result: np.ndarray):
-    print(result.shape)
     plt.imshow(result)
     plt.xticks([])
     plt.yticks([])
@@ -192,9 +191,15 @@ def deploy_plot_res(result: np.ndarray):
 
 if __name__ == "__main__":
     args = parse_args(sys.argv[1:])
+
     result = main(args)
     print("Result:", result.shape)
+
     if args.save:
-        mpimg.imsave(args.save, result.astype(np.uint8))
+        os.makedirs(args.savedir, exist_ok=True)
+        filename = os.path.basename(args.image)
+        savepath = f"{args.savedir}/{filename}"
+        mpimg.imsave(savepath, result.astype(np.uint8))
+
     # deploy_plot_res(result)
     # plt.show()
