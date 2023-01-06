@@ -78,8 +78,6 @@ def predict(
             features.append(feature)
     x = feature
     features = features[::-1]
-    del model.vgg16
-    gc.collect()
 
     featuresrbp = []
     for i in range(len(model.rbpups)):
@@ -106,7 +104,6 @@ def predict(
     logits_r = tf.keras.backend.resize_images(
         model.rtpfinal(x), 2, 2, "channels_last"
     )
-    del model.rtpfinal
 
     return logits_cw, logits_r
 
@@ -230,13 +227,13 @@ def main():
     if args.images:
         imgs = []
         for itype in IMG_TYPES:
-            imgs_type = glob.glob(f"{args.images}/**/*.{itype}", recursive=True)
+            imgs_type = glob.glob(f"{args.images}/**/*.{itype}",
+                                  recursive=True)
             imgs.extend(imgs_type)
         imgs = sorted(imgs)
     else:
         imgs = [args.image]
 
-    print(imgs)
     for ipath in imgs:
         img, shp = init_image(ipath)
         result = run_on_one(args, model, img, shp)
