@@ -57,6 +57,9 @@ def init_image(img_path: str) -> Tuple[tf.Tensor, np.ndarray]:
         img = tf.expand_dims(img, -1)
         img = tf.image.grayscale_to_rgb(img)
         shp = np.array((shp[0], shp[1], 3))
+    elif shp[-1] == 4:
+        img = img[:, :, :3]
+        shp = np.array((shp[0], shp[1], 3))
     img = tf.image.resize(img, [512, 512])
     img = tf.cast(img, dtype=tf.float32)
     img = tf.reshape(img, [-1, 512, 512, 3]) / 255
@@ -227,12 +230,13 @@ def main():
     if args.images:
         imgs = []
         for itype in IMG_TYPES:
-            imgs_type = glob.glob(f"{args.images}/**/*.{itype}")
+            imgs_type = glob.glob(f"{args.images}/**/*.{itype}", recursive=True)
             imgs.extend(imgs_type)
         imgs = sorted(imgs)
     else:
         imgs = [args.image]
 
+    print(imgs)
     for ipath in imgs:
         img, shp = init_image(ipath)
         result = run_on_one(args, model, img, shp)
