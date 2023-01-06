@@ -3,7 +3,6 @@ import gc
 import os
 import sys
 
-# import pdb
 from typing import List, Tuple
 
 import matplotlib.image as mpimg
@@ -11,7 +10,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-import dfp._paths
 from dfp.data import convert_one_hot_to_image
 from dfp.net import deepfloorplanModel
 from dfp.utils.rgb_ind_convertor import (
@@ -22,7 +20,6 @@ from dfp.utils.rgb_ind_convertor import (
 from dfp.utils.util import fill_break_line, flood_fill, refine_room_region
 
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
-print(dfp._paths)
 
 
 def init(
@@ -38,6 +35,7 @@ def init(
         model.allocate_tensors()
     img = mpimg.imread(config.image)
     shp = img.shape
+    print("Input:", shp)
     img = tf.convert_to_tensor(img, dtype=tf.uint8)
     img = tf.image.resize(img, [512, 512])
     img = tf.cast(img, dtype=tf.float32)
@@ -164,10 +162,6 @@ def main(config: argparse.Namespace) -> np.ndarray:
         return newr.squeeze() + newcw
     newr_color, newcw_color = colorize(newr.squeeze(), newcw.squeeze())
     result = newr_color + newcw_color
-    print(shp, result.shape)
-
-    if config.save:
-        mpimg.imsave(config.save, result.astype(np.uint8))
 
     return result
 
@@ -199,6 +193,8 @@ def deploy_plot_res(result: np.ndarray):
 if __name__ == "__main__":
     args = parse_args(sys.argv[1:])
     result = main(args)
-    deploy_plot_res(result)
-    plt.show()
-    # pdb.set_trace()
+    print("Result:", result.shape)
+    if args.save:
+        mpimg.imsave(args.save, result.astype(np.uint8))
+    # deploy_plot_res(result)
+    # plt.show()
