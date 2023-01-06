@@ -1,3 +1,5 @@
+"""Run."""
+
 import argparse
 import gc
 import os
@@ -22,34 +24,38 @@ from dfp.utils.util import fill_break_line, flood_fill, refine_room_region
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
 
-def init(
-    config: argparse.Namespace,
-) -> Tuple[tf.keras.Model, tf.Tensor, np.ndarray]:
+def init_model(config: argparse.Namespace) -> tf.keras.Model:
+    """Init model."""
     model = deepfloorplanModel()
     if config.loadmethod == "log":
         model.load_weights(config.weight)
+        model.trainable = False
+        model.vgg16.trainable = False
     elif config.loadmethod == "pb":
         model = tf.keras.models.load_model(config.weight)
+        model.trainable = False
+        model.vgg16.trainable = False
     elif config.loadmethod == "tflite":
         model = tf.lite.Interpreter(model_path=config.weight)
         model.allocate_tensors()
+    return model
+
+
+def init_image(config: argparse.Namespace) -> tf.Tensor:
+    """Init image."""
     img = mpimg.imread(config.image)
-    shp = img.shape
-    print("Input:", shp)
+    print("Input:", img.shape)
     img = tf.convert_to_tensor(img, dtype=tf.uint8)
     img = tf.image.resize(img, [512, 512])
     img = tf.cast(img, dtype=tf.float32)
     img = tf.reshape(img, [-1, 512, 512, 3]) / 255
-    if config.loadmethod == "tflite":
-        return model, img, shp
-    model.trainable = False
-    model.vgg16.trainable = False
-    return model, img, shp
+    return img
 
 
 def predict(
     model: tf.keras.Model, img: tf.Tensor, shp: np.ndarray
 ) -> Tuple[tf.Tensor, tf.Tensor]:
+    """Predict."""
     features = []
     feature = img
     for layer in model.vgg16.layers:
@@ -94,6 +100,7 @@ def predict(
 def post_process(
     rm_ind: np.ndarray, bd_ind: np.ndarray, shp: np.ndarray
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """Post process."""
     hard_c = (bd_ind > 0).astype(np.uint8)
     # region from room prediction
     rm_mask = np.zeros(rm_ind.shape)
@@ -120,13 +127,15 @@ def post_process(
 
 
 def colorize(r: np.ndarray, cw: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Colorize."""
     cr = ind2rgb(r, color_map=floorplan_fuse_map)
     ccw = ind2rgb(cw, color_map=floorplan_boundary_map)
     return cr, ccw
 
 
-def main(config: argparse.Namespace) -> np.ndarray:
-    model, img, shp = init(config)
+def run_on_one(config: argparse.Namespace, model, img) -> np.ndarray:
+    """Run."""
+    shp = img.shape
     if config.loadmethod == "log":
         logits_cw, logits_r = predict(model, img, shp)
     elif config.loadmethod == "pb" or config.loadmethod == "none":
@@ -167,6 +176,7 @@ def main(config: argparse.Namespace) -> np.ndarray:
 
 
 def parse_args(args: List[str]) -> argparse.Namespace:
+    """Parse args."""
     p = argparse.ArgumentParser()
     p.add_argument("--image", type=str, default="resources/30939153.jpg")
     p.add_argument("--weight", type=str, default="log/store/G")
@@ -182,23 +192,36 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     return p.parse_args(args)
 
 
-def deploy_plot_res(result: np.ndarray):
+def save_result(args, result: np.ndarray):
+    """Save result."""
+    filename = os.path.basename(args.image)
+    savepath = f"{args.savedir}/{filename}"
+    mpimg.imsave(savepath, result.astype(np.uint8))
+
+
+def plot_result(result: np.ndarray):
+    """Plot result."""
     plt.imshow(result)
     plt.xticks([])
     plt.yticks([])
     plt.grid(False)
 
 
-if __name__ == "__main__":
+def main():
+    """Run main."""
     args = parse_args(sys.argv[1:])
-
-    result = main(args)
-    print("Result:", result.shape)
-
     os.makedirs(args.savedir, exist_ok=True)
-    filename = os.path.basename(args.image)
-    savepath = f"{args.savedir}/{filename}"
-    mpimg.imsave(savepath, result.astype(np.uint8))
 
-    # deploy_plot_res(result)
+    model = init_model(args)
+    img = init_image(args)
+
+    result = run_on_one(args, model, img)
+    print("Result:", result.shape)
+    save_result(args, result)
+
+    # plot_result(result)
     # plt.show()
+
+
+if __name__ == "__main__":
+    main()
