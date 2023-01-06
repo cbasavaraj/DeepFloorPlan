@@ -41,15 +41,16 @@ def init_model(config: argparse.Namespace) -> tf.keras.Model:
     return model
 
 
-def init_image(config: argparse.Namespace) -> tf.Tensor:
+def init_image(config: argparse.Namespace) -> Tuple[tf.Tensor, np.ndarray]:
     """Init image."""
     img = mpimg.imread(config.image)
-    print("Input:", img.shape)
+    shp = img.shape
+    print("Input:", shp)
     img = tf.convert_to_tensor(img, dtype=tf.uint8)
     img = tf.image.resize(img, [512, 512])
     img = tf.cast(img, dtype=tf.float32)
     img = tf.reshape(img, [-1, 512, 512, 3]) / 255
-    return img
+    return img, shp
 
 
 def predict(
@@ -133,12 +134,11 @@ def colorize(r: np.ndarray, cw: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     return cr, ccw
 
 
-def run_on_one(config: argparse.Namespace, model, img) -> np.ndarray:
+def run_on_one(config: argparse.Namespace, model, img, shp) -> np.ndarray:
     """Run."""
-    shp = img.shape
     if config.loadmethod == "log":
         logits_cw, logits_r = predict(model, img, shp)
-    elif config.loadmethod == "pb" or config.loadmethod == "none":
+    elif config.loadmethod == "pb":
         logits_r, logits_cw = model(img)
     elif config.loadmethod == "tflite":
         input_details = model.get_input_details()
@@ -186,8 +186,8 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         "--loadmethod",
         type=str,
         default="log",
-        choices=["log", "tflite", "pb", "none"],
-    )  # log,tflite,pb
+        choices=["log", "tflite", "pb"],
+    )
     p.add_argument("--savedir", type=str, default="out")
     return p.parse_args(args)
 
@@ -213,9 +213,9 @@ def main():
     os.makedirs(args.savedir, exist_ok=True)
 
     model = init_model(args)
-    img = init_image(args)
+    img, shp = init_image(args)
 
-    result = run_on_one(args, model, img)
+    result = run_on_one(args, model, img, shp)
     print("Result:", result.shape)
     save_result(args, result)
 
