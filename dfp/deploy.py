@@ -91,9 +91,9 @@ def predict(
     x = features.pop(0)
     nLays = len(model.rtpups)
     for i in range(nLays):
-        rs = model.rtpups.pop(0)
-        r1 = model.rtpcv1.pop(0)
-        r2 = model.rtpcv2.pop(0)
+        rs = model.rtpups[i]
+        r1 = model.rtpcv1[i]
+        r2 = model.rtpcv2[i]
         f = features.pop(0)
         x = rs(x) + r1(f)
         x = r2(x)
