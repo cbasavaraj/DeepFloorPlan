@@ -47,12 +47,16 @@ def init_model(config: argparse.Namespace) -> tf.keras.Model:
     return model
 
 
-def init_image(config: argparse.Namespace) -> Tuple[tf.Tensor, np.ndarray]:
+def init_image(img_path: str) -> Tuple[tf.Tensor, np.ndarray]:
     """Init image."""
-    img = mpimg.imread(config.image)
+    img = mpimg.imread(img_path)
     shp = img.shape
-    print("Input:", shp)
+    print(img_path, ':', shp)
     img = tf.convert_to_tensor(img, dtype=tf.uint8)
+    if len(shp) == 2:
+        img = tf.expand_dims(img, -1)
+        img = tf.image.grayscale_to_rgb(img)
+        shp = np.array((shp[0], shp[1], 3))
     img = tf.image.resize(img, [512, 512])
     img = tf.cast(img, dtype=tf.float32)
     img = tf.reshape(img, [-1, 512, 512, 3]) / 255
@@ -195,14 +199,15 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         default="log",
         choices=["log", "tflite", "pb"],
     )
-    p.add_argument("--savedir", type=str, default="out")
     return p.parse_args(args)
 
 
 def save_result(img_path: str, result: np.ndarray):
     """Save result."""
     save_path = f"{img_path.split('.')[0]}.jpg"
-    mpimg.imsave(save_path, result.astype(np.uint8))
+    save_dir = os.path.dirname(save_path)
+    os.makedirs(f"out/{save_dir}", exist_ok=True)
+    mpimg.imsave(f"out/{save_path}", result.astype(np.uint8))
 
 
 def plot_result(result: np.ndarray):
@@ -216,7 +221,6 @@ def plot_result(result: np.ndarray):
 def main():
     """Run main."""
     args = parse_args(sys.argv[1:])
-    os.makedirs(args.savedir, exist_ok=True)
 
     model = init_model(args)
 
@@ -225,6 +229,7 @@ def main():
         for itype in IMG_TYPES:
             imgs_type = glob.glob(f"{args.images}/**/*.{itype}")
             imgs.extend(imgs_type)
+        imgs = sorted(imgs)
     else:
         imgs = [args.image]
 
