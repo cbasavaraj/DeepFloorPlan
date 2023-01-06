@@ -117,7 +117,7 @@ def post_process(
     rm_mask[rm_ind > 0] = 1
     # region from close wall line
     cw_mask = hard_c
-    # regine close wall mask by filling the gap between bright line
+    # refine close wall mask by filling the gap between bright line
     cw_mask = fill_break_line(cw_mask)
     cw_mask = np.reshape(cw_mask, (*shp[:2], -1))
     fuse_mask = cw_mask + rm_mask
@@ -132,7 +132,7 @@ def post_process(
 
     # ignore the background mislabeling
     new_rm_ind = fuse_mask.reshape(*shp[:2], -1) * new_rm_ind
-    new_bd_ind = fill_break_line(bd_ind).squeeze()
+    new_bd_ind = fill_break_line(bd_ind)
     return new_rm_ind, new_bd_ind
 
 
@@ -163,23 +163,17 @@ def run_on_one(config: argparse.Namespace, model, img, shp) -> np.ndarray:
     r = convert_one_hot_to_image(logits_r)[0].numpy()
     cw = convert_one_hot_to_image(logits_cw)[0].numpy()
 
-    if not config.colorize and not config.postprocess:
+    if config.post_process:
+        r, cw = post_process(r, cw, shp)
+
+    if not config.colorize:
         cw[cw == 1] = 9
         cw[cw == 2] = 10
-        r[cw != 0] = 0
+        cw[cw != 0] = 0
         return (r + cw).squeeze()
-    elif config.colorize and not config.postprocess:
-        r_color, cw_color = colorize(r.squeeze(), cw.squeeze())
-        return r_color + cw_color
 
-    newr, newcw = post_process(r, cw, shp)
-    if not config.colorize and config.postprocess:
-        newcw[newcw == 1] = 9
-        newcw[newcw == 2] = 10
-        newr[newcw != 0] = 0
-        return newr.squeeze() + newcw
-    newr_color, newcw_color = colorize(newr.squeeze(), newcw.squeeze())
-    result = newr_color + newcw_color
+    r_color, cw_color = colorize(r.squeeze(), cw.squeeze())
+    result = r_color + cw_color
 
     return result
 
