@@ -1,16 +1,19 @@
 """Run."""
 
-import argparse
-import gc
 import os
 import sys
+import gc
+
+import argparse
+import glob
 
 from typing import List, Tuple
 
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
 
 from dfp.data import convert_one_hot_to_image
 from dfp.net import deepfloorplanModel
@@ -22,6 +25,9 @@ from dfp.utils.rgb_ind_convertor import (
 from dfp.utils.util import fill_break_line, flood_fill, refine_room_region
 
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+
+
+IMG_TYPES = ['gif', 'jpeg', 'jpg', 'png']
 
 
 def init_model(config: argparse.Namespace) -> tf.keras.Model:
@@ -178,6 +184,7 @@ def run_on_one(config: argparse.Namespace, model, img, shp) -> np.ndarray:
 def parse_args(args: List[str]) -> argparse.Namespace:
     """Parse args."""
     p = argparse.ArgumentParser()
+    p.add_argument("--images", type=str)
     p.add_argument("--image", type=str, default="resources/30939153.jpg")
     p.add_argument("--weight", type=str, default="log/store/G")
     p.add_argument("--postprocess", action="store_true")
@@ -192,11 +199,10 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     return p.parse_args(args)
 
 
-def save_result(args, result: np.ndarray):
+def save_result(img_path: str, result: np.ndarray):
     """Save result."""
-    filename = os.path.basename(args.image)
-    savepath = f"{args.savedir}/{filename}"
-    mpimg.imsave(savepath, result.astype(np.uint8))
+    save_path = f"{img_path.split('.')[0]}.jpg"
+    mpimg.imsave(save_path, result.astype(np.uint8))
 
 
 def plot_result(result: np.ndarray):
@@ -213,13 +219,26 @@ def main():
     os.makedirs(args.savedir, exist_ok=True)
 
     model = init_model(args)
-    img, shp = init_image(args)
 
-    result = run_on_one(args, model, img, shp)
-    print("Result:", result.shape)
-    save_result(args, result)
+    if args.images:
+        imgs = []
+        for itype in IMG_TYPES:
+            imgs_type = glob.glob(f"{args.images}/**/*.{itype}")
+            imgs.extend(imgs_type)
+    else:
+        imgs = [args.image]
 
-    # plot_result(result)
+    for ipath in imgs:
+        img, shp = init_image(ipath)
+        result = run_on_one(args, model, img, shp)
+        print("Result:", result.shape)
+        if args.images:
+            ipath = ipath.replace(args.images, '')
+        else:
+            ipath = os.path.basename(args.image)
+        save_result(ipath, result)
+        # plot_result(result)
+
     # plt.show()
 
 
