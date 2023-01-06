@@ -195,11 +195,10 @@ if __name__ == "__main__":
     result = main(args)
     print("Result:", result.shape)
 
-    if args.save:
-        os.makedirs(args.savedir, exist_ok=True)
-        filename = os.path.basename(args.image)
-        savepath = f"{args.savedir}/{filename}"
-        mpimg.imsave(savepath, result.astype(np.uint8))
+    os.makedirs(args.savedir, exist_ok=True)
+    filename = os.path.basename(args.image)
+    savepath = f"{args.savedir}/{filename}"
+    mpimg.imsave(savepath, result.astype(np.uint8))
 
     # deploy_plot_res(result)
     # plt.show()
