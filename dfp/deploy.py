@@ -2,7 +2,6 @@
 
 import os
 import sys
-import gc
 
 import argparse
 import glob
